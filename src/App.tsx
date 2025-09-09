@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { InputField } from "./components/InputField";
 import { DataTable } from "./components/DataTable";
+import type { Column } from "./components/DataTable";
 
-interface UserData {
-  id: number;
+interface User {
   username: string;
   password: string;
 }
@@ -11,38 +11,41 @@ interface UserData {
 function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [users, setUsers] = useState<UserData[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
-  const handleSubmit = () => {
-    if (!username || !password) return alert("Please fill both fields");
-    const newUser: UserData = {
-      id: Date.now(),
-      username,
-      password,
-    };
-    setUsers((prev) => [...prev, newUser]);
+  const handleAddUser = () => {
+    if (!username || !password) return;
+    setUsers((prev) => [...prev, { username, password }]);
     setUsername("");
     setPassword("");
   };
 
+  const columns: Column<User>[] = [
+    { key: "username", title: "Username", dataIndex: "username", sortable: true },
+    { key: "password", title: "Password", dataIndex: "password" },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
-      <div className="w-full max-w-sm bg-white shadow-md rounded-lg p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-center">Add User</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 space-y-4">
+        <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100">
+          Login Form
+        </h1>
 
         <InputField
           label="Username"
-          placeholder="Enter your username"
+          placeholder="Enter username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          helperText="This will be stored in the table"
+          helperText="This will be visible to others"
           variant="outlined"
           size="md"
+          clearable
         />
 
         <InputField
           label="Password"
-          placeholder="Enter your password"
+          placeholder="Enter password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           variant="filled"
@@ -51,24 +54,23 @@ function App() {
         />
 
         <button
-          className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition"
-          onClick={handleSubmit}
+          onClick={handleAddUser}
+          disabled={!username || !password}
+          className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-lg transition"
         >
           Add User
         </button>
       </div>
 
-      {/* DataTable Section */}
-      <div className="mt-10 w-full max-w-2xl">
-        <h2 className="text-xl text-center font-semibold mb-2">User Table</h2>
-        <DataTable<UserData>
+      <div className="w-full max-w-2xl bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
+          Users Table
+        </h2>
+        <DataTable<User>
           data={users}
-          columns={[
-            { key: "username", title: "Username", dataIndex: "username", sortable: true },
-            { key: "password", title: "Password", dataIndex: "password" },
-          ]}
+          columns={columns}
           selectable
-          onRowSelect={(rows) => console.log("Selected:", rows)}
+          onRowSelect={(selected) => console.log("Selected:", selected)}
         />
       </div>
     </div>

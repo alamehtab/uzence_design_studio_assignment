@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-
 export interface Column<T> {
     key: string;
     title: string;
@@ -15,107 +14,91 @@ export interface DataTableProps<T> {
     onRowSelect?: (selectedRows: T[]) => void;
 }
 
-export function DataTable<T extends { id: string | number }>({
+export function DataTable<T extends Record<string, any>>({
     data,
     columns,
     loading = false,
     selectable = false,
     onRowSelect,
 }: DataTableProps<T>) {
-    const [sortConfig, setSortConfig] = useState<{
-        key: keyof T;
-        direction: "asc" | "desc";
-    } | null>(null);
+    const [selectedRows, setSelectedRows] = useState<T[]>([]);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: "asc" | "desc" } | null>(null);
 
-    const [selected, setSelected] = useState<Set<string | number>>(new Set());
+    const handleSort = (col: Column<T>) => {
+        if (!col.sortable) return;
+        let direction: "asc" | "desc" = "asc";
+        if (sortConfig?.key === col.dataIndex && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key: col.dataIndex, direction });
+    };
 
-    // Sorting
-    const sortedData = React.useMemo(() => {
-        if (!sortConfig) return data;
-        return [...data].sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-            if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+    const sortedData = sortConfig
+        ? [...data].sort((a, b) => {
+            const aVal = a[sortConfig.key];
+            const bVal = b[sortConfig.key];
+            if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
             return 0;
-        });
-    }, [data, sortConfig]);
+        })
+        : data;
 
-    const handleSort = (key: keyof T) => {
-        setSortConfig((prev) => {
-            if (prev && prev.key === key) {
-                return {
-                    key,
-                    direction: prev.direction === "asc" ? "desc" : "asc",
-                };
-            }
-            return { key, direction: "asc" };
-        });
-    };
-
-    const toggleRow = (id: string | number) => {
-        const newSelected = new Set(selected);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
+    const toggleRow = (row: T) => {
+        let newSelected: T[];
+        if (selectedRows.includes(row)) {
+            newSelected = selectedRows.filter((r) => r !== row);
         } else {
-            newSelected.add(id);
+            newSelected = [...selectedRows, row];
         }
-        setSelected(newSelected);
-        if (onRowSelect) {
-            const selectedRows = data.filter((row) => newSelected.has(row.id));
-            onRowSelect(selectedRows);
-        }
+        setSelectedRows(newSelected);
+        onRowSelect?.(newSelected);
     };
-
-    if (loading) {
-        return <div className="p-4 text-center">Loading...</div>;
-    }
-
-    if (data.length === 0) {
-        return <div className="p-4 text-center text-gray-500">No data available</div>;
-    }
 
     return (
         <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200">
-                <thead className="bg-gray-100">
-                    <tr>
-                        {selectable && <th className="p-2 border">Select</th>}
-                        {columns.map((col) => (
-                            <th
-                                key={col.key}
-                                className="p-2 border cursor-pointer select-none"
-                                onClick={() => col.sortable && handleSort(col.dataIndex)}
-                            >
-                                {col.title}
-                                {col.sortable && sortConfig?.key === col.dataIndex && (
-                                    <span>{sortConfig.direction === "asc" ? " 🔼" : " 🔽"}</span>
-                                )}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedData.map((row) => (
-                        <tr key={row.id} className="hover:bg-gray-50">
-                            {selectable && (
-                                <td className="p-2 border text-center">
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.has(row.id)}
-                                        onChange={() => toggleRow(row.id)}
-                                    />
-                                </td>
-                            )}
+            {loading ? (
+                <p className="text-center py-4">Loading...</p>
+            ) : sortedData.length === 0 ? (
+                <p className="text-center py-4">No data available</p>
+            ) : (
+                <table className="min-w-full border border-gray-300 dark:border-gray-600">
+                    <thead className="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            {selectable && <th className="p-2"></th>}
                             {columns.map((col) => (
-                                <td key={col.key} className="p-2 border">
-                                    {String(row[col.dataIndex])}
-                                </td>
+                                <th
+                                    key={col.key}
+                                    onClick={() => handleSort(col)}
+                                    className={`p-2 text-left cursor-${col.sortable ? "pointer" : "default"} text-gray-700 dark:text-gray-200`}
+                                >
+                                    {col.title}
+                                    {sortConfig?.key === col.dataIndex && (sortConfig.direction === "asc" ? " 🔼" : " 🔽")}
+                                </th>
                             ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {sortedData.map((row, i) => (
+                            <tr key={i} className="border-t border-gray-300 dark:border-gray-600">
+                                {selectable && (
+                                    <td className="p-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedRows.includes(row)}
+                                            onChange={() => toggleRow(row)}
+                                        />
+                                    </td>
+                                )}
+                                {columns.map((col) => (
+                                    <td key={col.key} className="p-2 text-gray-800 dark:text-gray-100">
+                                        {String(row[col.dataIndex])}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
         </div>
     );
 }
